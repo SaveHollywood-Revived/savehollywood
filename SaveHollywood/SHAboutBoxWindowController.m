@@ -30,14 +30,19 @@
 
 - (void)windowDidLoad
 {
-	[super windowDidLoad];
+    [super windowDidLoad];
     
-    NSBundle * tBundle=[NSBundle bundleForClass:[self class]];
-    NSDictionary * tInfoDictionary=tBundle.infoDictionary;
+    NSBundle * tBundle = [NSBundle bundleForClass:[self class]];
+    NSDictionary * tInfoDictionary = tBundle.infoDictionary;
     
-    _versionLabel.stringValue=[NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Version %@ (%@)",@"Localized",tBundle,@""),tInfoDictionary[@"CFBundleShortVersionString"],tInfoDictionary[@"CFBundleVersion"]];
+    _versionLabel.stringValue = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Version %@ (%@)", @"Localized", tBundle, @""), tInfoDictionary[@"CFBundleShortVersionString"], tInfoDictionary[@"CFBundleVersion"]];
     
-    _copyrightLabel.stringValue=[NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Legal terms",@"Localized",tBundle,@""),[[NSCalendarDate date] yearOfCommonEra]];
+    NSDate *currentDate = [NSDate date];
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDateComponents *components = [calendar components:NSCalendarUnitYear fromDate:currentDate];
+    NSInteger year = [components year];
+
+    _copyrightLabel.stringValue = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Legal terms", @"Localized", tBundle, @""), year];
 }
 
 @end

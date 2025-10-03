@@ -10,6 +10,7 @@
  
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#import <os/log.h>
 
 #import "SaveHollywoodView.h"
 #import "SHConfigurationWindowController.h"
@@ -22,6 +23,7 @@
 
 #import "NSColor+String.h"
 #import "NSArray+Shuffle.h"
+
 
 #define BORDER_SIZE		50.0
 
@@ -147,37 +149,29 @@ NSUInteger random_no(NSUInteger n)
 
 - (id)initWithFrame:(NSRect)frameRect isPreview:(BOOL)isPreview
 {
-    self=[super initWithFrame:frameRect isPreview:isPreview];
-    
-    if (self!=nil)
-    {
-		SInt32 tMajorVersion,tMinorVersion,tBugFixVersion;
-		
-		Gestalt(gestaltSystemVersionMajor,&tMajorVersion);
-		Gestalt(gestaltSystemVersionMinor,&tMinorVersion);
-		Gestalt(gestaltSystemVersionBugFix,&tBugFixVersion);
-		
-		
-		_useKeyedArchiverForLeftOffData=(tMajorVersion>10 || (tMajorVersion==10 && tMinorVersion>=12));
-		
-		[self setAnimationTimeInterval:1.0];
-        
-        _fileManager=[NSFileManager defaultManager];
-		
-		_preview=isPreview;
-        
-        if (_preview==YES)
-        {
-            _mainScreen=YES;
+    self = [super initWithFrame:frameRect isPreview:isPreview];
+
+    if (self != nil) {
+        NSOperatingSystemVersion version = [[NSProcessInfo processInfo] operatingSystemVersion];
+        NSInteger major = version.majorVersion;
+        NSInteger minor = version.minorVersion;
+
+        _useKeyedArchiverForLeftOffData = (major > 10 || (major == 10 && minor >= 12));
+
+        [self setAnimationTimeInterval:1.0];
+
+        _fileManager = [NSFileManager defaultManager];
+
+        _preview = isPreview;
+
+        if (_preview == YES) {
+            _mainScreen = YES;
+        } else {
+            _mainScreen = (NSMinX(frameRect) == 0 && NSMinY(frameRect) == 0);
         }
-        else
-        {
-            _mainScreen= (NSMinX(frameRect)==0 && NSMinY(frameRect)==0);
-        }
-        
+
         [self setWantsLayer:YES];
     }
-    
     return self;
 }
 
@@ -384,35 +378,24 @@ NSUInteger random_no(NSUInteger n)
                 }
             }
             
-            if ([tAssets count]>0)
+            if ([tAssets count] > 0)
             {
                 __assetsArray=[[NSMutableArray alloc] initWithCapacity:[tAssets count]];
-                
+
                 if (__assetsArray!=nil)
                 {
-                    // Flatten the list of potential assets and prune it from incompatible and unplayable files
-                    NSArray * tAcceptedUTIsArray=[AVURLAsset audiovisualTypes];
-                    NSWorkspace  * tSharedWorkspace=[NSWorkspace sharedWorkspace];
-                    
                     for(NSURL * tURL in tAssets)
                     {
                         if ([tURL isFileURL]==YES)
                         {
                             NSString * tAbsolutePath=[tURL path];
                             BOOL tIsDirectory;
-							
+                            
                             if ([_fileManager fileExistsAtPath:tAbsolutePath isDirectory:&tIsDirectory]==YES)
                             {
                                 if (tIsDirectory==NO)
                                 {
-                                    // Check that the file is of a supported type
-                                    
-                                    NSString * tUTI=[tSharedWorkspace typeOfFile:tAbsolutePath error:NULL];
-                                    
-                                    if (tUTI!=nil && [tAcceptedUTIsArray containsObject:tUTI]==YES)
-                                    {
-                                        [__assetsArray addObject:tURL];
-                                    }
+                                    [__assetsArray addObject:tURL];
                                 }
                                 else
                                 {
@@ -428,33 +411,13 @@ NSUInteger random_no(NSUInteger n)
                                     }
                                     else
                                     {
-                                        for (NSString * tFileName in tFileNamesArray)
-                                        {
-                                            NSString * tSubPath=[tAbsolutePath stringByAppendingPathComponent:tFileName];
-                                            
-                                            // Check that the file is of a supported type
-                                            
-                                            NSString * tUTI=[tSharedWorkspace typeOfFile:tSubPath error:NULL];
-                                            
-                                            if (tUTI!=nil && [tAcceptedUTIsArray containsObject:tUTI]==YES)
-                                            {
-                                                NSURL *tSubURL=[NSURL fileURLWithPath:tSubPath];
-                                            
-                                                if (tSubURL!=nil)
-                                                {
-                                                    [__assetsArray addObject:tSubURL];
-                                                }
-                                            }
+                                        for (NSString *tFileName in tFileNamesArray) {
+                                            NSString *fullFilePath = [tAbsolutePath stringByAppendingPathComponent:tFileName];
+                                            [__assetsArray addObject:[NSURL fileURLWithPath:fullFilePath]];
                                         }
                                     }
                                 }
                             }
-                        }
-                        else
-                        {
-                            // Remote URL
-                            
-                            // A COMPLETER
                         }
                     }
                 
@@ -478,9 +441,7 @@ NSUInteger random_no(NSUInteger n)
                                                                  selector:@selector(playerItemDidPlayToEnd:)
                                                                      name:AVPlayerItemDidPlayToEndTimeNotification
                                                                    object:nil];
-                        
-                        //
-                        
+                                                
                         NSDictionary * tLastKnownAssetDictionary=nil;
                         
                         if (_preview==NO)
@@ -502,13 +463,13 @@ NSUInteger random_no(NSUInteger n)
                                     
                                     if (tData!=nil)
                                     {
-										if (_useKeyedArchiverForLeftOffData==YES)
-											tLastKnownAssetDictionary=[NSKeyedUnarchiver unarchiveObjectWithData:tData];
-										else
-											tLastKnownAssetDictionary=[NSUnarchiver unarchiveObjectWithData:tData];
-                                        
-                                        if (tLastKnownAssetDictionary==nil)
-                                            NSLog(@"Error when unarchiving last known asset for %@",tScreenKey);
+                                        NSError *error = nil;
+                                        tLastKnownAssetDictionary = [NSKeyedUnarchiver unarchivedObjectOfClass:[NSDictionary class]
+                                                                                                   fromData:tData
+                                                                                                      error:&error];
+                                        if (!tLastKnownAssetDictionary) {
+                                            NSLog(@"Failed unarchiving data: %@", error);
+                                        }
                                     }
                                 }
                                 else
@@ -617,15 +578,31 @@ NSUInteger random_no(NSUInteger n)
 					NSDictionary * tLastAssetDictionary=@{SHAssetTimeKey:tValue,
 														  SHAssetURLKey:tCurrentURL};
 					
-					NSData * tData=nil;
-					
-					if (_useKeyedArchiverForLeftOffData==YES)
-						tData=[NSKeyedArchiver archivedDataWithRootObject:tLastAssetDictionary];
-                    else
-						tData=[NSArchiver archivedDataWithRootObject:tLastAssetDictionary];
-						
-                    if (tData!=nil)
+                    NSError *error = nil;
+                    NSData *tData = nil;
+
+                    if (_useKeyedArchiverForLeftOffData == YES) {
+                        tData = [NSKeyedArchiver archivedDataWithRootObject:tLastAssetDictionary
+                                                        requiringSecureCoding:NO
+                                                                        error:&error];
+                        if (error) {
+                            NSLog(@"Archiving error: %@", error);
+                        }
+                    } else {
+                        // NSArchiver is deprecated, consider migrating all data to use NSKeyedArchiver
+                        NSError *error = nil;
+                        tData = [NSKeyedArchiver archivedDataWithRootObject:tLastAssetDictionary
+                                                        requiringSecureCoding:NO
+                                                                        error:&error];
+                        if (error != nil) {
+                            NSLog(@"Error archiving data: %@", error);
+                        }
+                    }
+
+                    if (tData != nil) {
                         [tDefaults setObject:tData forKey:tScreenKey];
+                    }
+
                 }
             }
             else
@@ -820,66 +797,63 @@ NSUInteger random_no(NSUInteger n)
     CGRect tBackgroundFrame=_backgroundLayer.bounds;
     CGRect tFrame=tBackgroundFrame;
     
-    if (_scaling==SHMovieScaleNone)
-    {
-        CGSize tAssetSize=tAsset.naturalSize;
-        
-        CGFloat tRatio=tAssetSize.width/tBackgroundFrame.size.width;
-        CGFloat tYRatio=tAssetSize.height/tBackgroundFrame.size.height;
-        
-        if (tYRatio>tRatio)
-        {
-            tRatio=tYRatio;
+    [tAsset loadTracksWithMediaType:AVMediaTypeVideo completionHandler:^(NSArray<AVAssetTrack *> * _Nullable tracks, NSError * _Nullable error) {
+        if (error != nil || tracks.count == 0) {
+            NSLog(@"Failed to load video tracks: %@", error);
+            return;
         }
-        
-        if (tRatio>=1.0f)
-        {
-            tAssetSize.width=round(tAssetSize.width/tRatio);
-            tAssetSize.height=round(tAssetSize.height/tRatio);
+
+        AVAssetTrack *videoTrack = tracks[0];
+        CGSize tAssetSize = videoTrack.naturalSize;
+
+        CGFloat tRatio = tAssetSize.width / tBackgroundFrame.size.width;
+        CGFloat tYRatio = tAssetSize.height / tBackgroundFrame.size.height;
+
+        if (tYRatio > tRatio) {
+            tRatio = tYRatio;
         }
-        
-        if (_randomPosition==YES && tRatio<1.0)
-        {
-            // Make sure we can randomize the position
-            
-            NSSize tSize=tAssetSize;
-            
-            tFrame.origin=SSRandomPointForSizeWithinRect(tAssetSize,tBackgroundFrame);
-            tFrame.size=tSize;
+
+        if (tRatio >= 1.0f) {
+            tAssetSize.width = round(tAssetSize.width / tRatio);
+            tAssetSize.height = round(tAssetSize.height / tRatio);
         }
-        else
-        {
-            if (_drawBorder==YES)
-            {
-                if (tAssetSize.width>(tBackgroundFrame.size.width-2*BORDER_SIZE))
-                {
-                    tAssetSize.width=tBackgroundFrame.size.width-2*BORDER_SIZE;
+
+        CGRect tFrame;
+
+        if (_randomPosition == YES && tRatio < 1.0) {
+            NSSize tSize = tAssetSize;
+            tFrame.origin = SSRandomPointForSizeWithinRect(tAssetSize, tBackgroundFrame);
+            tFrame.size = tSize;
+        } else {
+            if (_drawBorder == YES) {
+                if (tAssetSize.width > (tBackgroundFrame.size.width - 2 * BORDER_SIZE)) {
+                    tAssetSize.width = tBackgroundFrame.size.width - 2 * BORDER_SIZE;
                 }
-                
-                if (tAssetSize.height>(tBackgroundFrame.size.height-2*BORDER_SIZE))
-                {
-                    tAssetSize.height=tBackgroundFrame.size.height-2*BORDER_SIZE;
+                if (tAssetSize.height > (tBackgroundFrame.size.height - 2 * BORDER_SIZE)) {
+                    tAssetSize.height = tBackgroundFrame.size.height - 2 * BORDER_SIZE;
                 }
             }
-            
-            tFrame.size=tAssetSize;
-            
-            tFrame.origin.x=round(tBackgroundFrame.origin.x+(tBackgroundFrame.size.width-tAssetSize.width)*0.5);
-            tFrame.origin.y=round(tBackgroundFrame.origin.y+(tBackgroundFrame.size.height-tAssetSize.height)*0.5);
+            tFrame.size = tAssetSize;
+            tFrame.origin.x = round(tBackgroundFrame.origin.x + (tBackgroundFrame.size.width - tAssetSize.width) * 0.5);
+            tFrame.origin.y = round(tBackgroundFrame.origin.y + (tBackgroundFrame.size.height - tAssetSize.height) * 0.5);
         }
-    }
-    else
-    {
-        if (_scaling==SHMovieScaleAxesIndependently)
-            _AVPlayerLayer.videoGravity=AVLayerVideoGravityResizeAspectFill;
-        else
-            _AVPlayerLayer.videoGravity=AVLayerVideoGravityResizeAspect;
-        
-        if (_drawBorder==YES)
-        {
-            tFrame=CGRectInset(tBackgroundFrame, BORDER_SIZE, BORDER_SIZE);
+
+        if (_scaling == SHMovieScaleAxesIndependently) {
+            _AVPlayerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+        } else {
+            _AVPlayerLayer.videoGravity = AVLayerVideoGravityResizeAspect;
         }
-    }
+
+        if (_drawBorder == YES) {
+            tFrame = CGRectInset(tBackgroundFrame, BORDER_SIZE, BORDER_SIZE);
+        }
+
+        // Use tFrame and update layers/UI on main thread as needed:
+        dispatch_async(dispatch_get_main_queue(), ^{
+            _AVPlayerLayer.frame = tFrame;
+            // Update UI or redraw if necessary
+        });
+    }];
     
     _AVPlayerLayer.frame=tFrame;
     
@@ -938,7 +912,7 @@ NSUInteger random_no(NSUInteger n)
     // Update assets playing list
     
     [[SHPlayingAssetsRegister sharedRegister] addAsset:tAsset.URL];
-    
+
     [_AVPlayerLayer.player play];
     
     if (_preview==NO && _showMetadata==YES)
@@ -1005,49 +979,49 @@ NSUInteger random_no(NSUInteger n)
                  
                  if ([tAvailableMetadataFormats containsObject:AVMetadataFormatQuickTimeUserData]==YES)
                  {
-                     NSArray * tMetadata=[tAVPlayerItem.asset metadataForFormat:AVMetadataFormatQuickTimeUserData];
-                     NSArray * tMetadataItemsArray;
-                 
-                     // Title
-                     
-                     if (_currentAssetMetadataTitle==nil)
-                     {
-                         tMetadataItemsArray=[AVMetadataItem metadataItemsFromArray:tMetadata
-                                                                            withKey:AVMetadataCommonKeyTitle
-                                                                           keySpace:AVMetadataKeySpaceCommon];
+                     [tAVPlayerItem.asset loadMetadataForFormat:AVMetadataFormatQuickTimeUserData completionHandler:^(NSArray<AVMetadataItem *> * _Nullable metadata, NSError * _Nullable error) {
                          
-                         if ([tMetadataItemsArray count]>0)
-                         {
-                             _currentAssetMetadataTitle=[[NSString alloc] initWithString:[tMetadataItemsArray[0] stringValue]];
+                         if (error) {
+                             NSLog(@"Error loading metadata: %@", error);
+                             return;
                          }
-                     }
-                     
-                     // Copyrights
-                     
-                     if (_currentAssetMetadataCopyrights==nil)
-                     {
-                         tMetadataItemsArray=[AVMetadataItem metadataItemsFromArray:tMetadata
-                                                                            withKey:AVMetadataCommonKeyCopyrights
-                                                                           keySpace:AVMetadataKeySpaceCommon];
-                     
-                         if ([tMetadataItemsArray count]>0)
-                         {
-                             _currentAssetMetadataCopyrights=[[NSString alloc] initWithString:[tMetadataItemsArray[0] stringValue]];
-                         }
-                     }
-                     
-                     if (_currentAssetMetadataTitle!=nil || _currentAssetMetadataCopyrights!=nil)
-                     {
-                         tTitleLayer.string=_currentAssetMetadataTitle;
-                         tCopyrightLayer.string=_currentAssetMetadataCopyrights;
                          
-                         if (_metadadataMode==kMovieFrameShowMetadataAtStart)
-                         {
-                             [self performSelectorOnMainThread:@selector(showMetadata:)
-                                                    withObject:nil
-                                                 waitUntilDone:NO];
+                         NSArray *tMetadataItemsArray;
+
+                         // Title
+                         if (_currentAssetMetadataTitle == nil) {
+                             tMetadataItemsArray = [AVMetadataItem metadataItemsFromArray:metadata
+                                                                                   withKey:AVMetadataCommonKeyTitle
+                                                                                  keySpace:AVMetadataKeySpaceCommon];
+                             if ([tMetadataItemsArray count] > 0) {
+                                 _currentAssetMetadataTitle = [[NSString alloc] initWithString:[tMetadataItemsArray[0] stringValue]];
+                             }
                          }
-                     }
+
+                         // Copyright
+                         if (_currentAssetMetadataCopyrights == nil) {
+                             tMetadataItemsArray = [AVMetadataItem metadataItemsFromArray:metadata
+                                                                                   withKey:AVMetadataCommonKeyCopyrights
+                                                                                  keySpace:AVMetadataKeySpaceCommon];
+                             if ([tMetadataItemsArray count] > 0) {
+                                 _currentAssetMetadataCopyrights = [[NSString alloc] initWithString:[tMetadataItemsArray[0] stringValue]];
+                             }
+                         }
+
+                         if (_currentAssetMetadataTitle != nil || _currentAssetMetadataCopyrights != nil) {
+                             dispatch_async(dispatch_get_main_queue(), ^{
+                                 tTitleLayer.string = _currentAssetMetadataTitle;
+                                 tCopyrightLayer.string = _currentAssetMetadataCopyrights;
+
+                                 if (_metadadataMode == kMovieFrameShowMetadataAtStart) {
+                                     [self performSelectorOnMainThread:@selector(showMetadata:)
+                                                            withObject:nil
+                                                         waitUntilDone:NO];
+                                 }
+                             });
+                         }
+                     }];
+
                  }
              }
          }];

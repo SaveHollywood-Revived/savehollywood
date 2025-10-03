@@ -24,18 +24,18 @@
 
 - (void)drawRect:(NSRect)dirtyRect
 {
-	if ([self isEffectiveAppareanceDarkAqua]==NO)
-		[[NSColor colorWithDeviceWhite:1.0 alpha:0.5] set];
-	else
-		[[NSColor colorWithDeviceWhite:0.0 alpha:0.15] set];
-	
-	NSRectFillUsingOperation(dirtyRect,NSCompositeSourceOver);
-	
-	[[NSColor colorWithDeviceWhite:0.0 alpha:0.10] set];
-	
-	NSRect tFrameRect=NSInsetRect([self bounds],-1,0);
-	
-	NSFrameRectWithWidthUsingOperation(tFrameRect, 1.0, NSCompositeSourceOver);
+    if ([self isEffectiveAppareanceDarkAqua] == NO)
+        [[NSColor colorWithDeviceWhite:1.0 alpha:0.5] set];
+    else
+        [[NSColor colorWithDeviceWhite:0.0 alpha:0.15] set];
+    
+    NSRectFillUsingOperation(dirtyRect, NSCompositingOperationSourceOver);
+    
+    [[NSColor colorWithDeviceWhite:0.0 alpha:0.10] set];
+    
+    NSRect tFrameRect = NSInsetRect([self bounds], -1, 0);
+    
+    NSFrameRectWithWidthUsingOperation(tFrameRect, 1.0, NSCompositingOperationSourceOver);
 }
 
 @end
